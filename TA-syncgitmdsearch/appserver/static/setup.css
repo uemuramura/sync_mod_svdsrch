@@ -1,0 +1,82 @@
+.sgms-wrap {
+  max-width: 720px;
+  padding: 8px 4px 16px;
+  font-size: 13px;
+}
+
+.sgms-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.sgms-grid label {
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.sgms-grid input[type="text"],
+.sgms-grid input[type="password"],
+.sgms-grid select,
+.sgms-grid textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid #c3cbd4;
+  border-radius: 4px;
+  font-family: inherit;
+}
+
+.sgms-grid textarea {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+}
+
+.sgms-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.sgms-actions {
+  margin-top: 16px;
+}
+
+.sgms-button {
+  background: #165a72;
+  color: #fff;
+  border: 0;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.sgms-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.sgms-status {
+  min-height: 1.4em;
+  margin: 0 0 12px;
+}
+
+.sgms-status.is-ok {
+  color: #0b6b3a;
+}
+
+.sgms-status.is-error {
+  color: #ad1f1f;
+}
+
+.sgms-hint {
+  margin: 0;
+  color: #5c6770;
+  font-size: 12px;
+}
+
+.sgms-note {
+  margin-top: 16px;
+  color: #5c6770;
+}

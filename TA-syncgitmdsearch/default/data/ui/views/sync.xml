@@ -1,0 +1,25 @@
+<form hideEdit="true">
+  <label>Markdown Search 同期</label>
+  <description>Git 上の Markdown から SPL を抽出し、ファイル名を検索名として saved search に保存します。</description>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="dropdown" token="dry_run">
+      <label>モード</label>
+      <choice value="true">プレビュー（保存しない）</choice>
+      <choice value="false">saved search に保存する</choice>
+      <default>true</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <table>
+        <title>同期結果</title>
+        <search>
+          <query>| syncgitmdsearch dry_run=$dry_run$</query>
+        </search>
+        <option name="wrap">true</option>
+        <option name="count">50</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+</form>

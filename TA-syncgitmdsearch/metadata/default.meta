@@ -1,0 +1,21 @@
+[]
+access = read : [ * ], write : [ admin ]
+export = system
+
+[commands]
+export = system
+
+[searchbnf]
+export = system
+
+[admin]
+access = read : [ admin ], write : [ admin ]
+export = system
+
+[views/setup]
+access = read : [ admin ], write : [ admin ]
+export = none
+
+[views/sync]
+access = read : [ admin, power ], write : [ admin ]
+export = none

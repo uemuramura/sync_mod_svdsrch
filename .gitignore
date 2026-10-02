@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+dist/
+TA-syncgitmdsearch/local/
+TA-syncgitmdsearch/metadata/local.meta
+*.spl
+.DS_Store
