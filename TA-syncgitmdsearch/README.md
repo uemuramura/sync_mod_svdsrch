@@ -2,9 +2,7 @@
 
 Custom command: `syncgitmdsearch`
 
-Install this folder under `$SPLUNK_HOME/etc/apps/`, restart Splunk, then open **Git 接続設定**. Git tokens and SSH keys are stored in Splunk `password.conf` via the setup page. Do not put secrets in source or in the Git URL.
-
-Usage:
+Fetches Markdown over HTTPS from GitHub, GitLab, or Bitbucket. Tokens are stored in Splunk `password.conf`. The add-on does not run `git`, SSH, or write a repository cache to disk.
 
 ```
 | syncgitmdsearch dry_run=true

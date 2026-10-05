@@ -5,7 +5,7 @@ $appName = "TA-syncgitmdsearch"
 $source = Join-Path $root $appName
 $dist = Join-Path $root "dist"
 $stage = Join-Path $dist $appName
-$package = Join-Path $dist "$appName-1.0.0.spl"
+$package = Join-Path $dist "$appName-1.1.0.spl"
 
 if (-not (Test-Path $source)) {
     throw "App directory not found: $source"

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
-"""Generating command: fetch Markdown from Git and save SPL as saved searches."""
+"""Generating command: fetch Markdown over HTTPS and save SPL as saved searches."""
 
 from __future__ import annotations
 
@@ -25,9 +25,9 @@ from splunklib.searchcommands import (  # noqa: E402
 
 from ta_syncgitmdsearch.config import load_settings  # noqa: E402
 from ta_syncgitmdsearch.credentials import load_secrets  # noqa: E402
-from ta_syncgitmdsearch.git_sync import GitError, GitRepo  # noqa: E402
+from ta_syncgitmdsearch.http_git import fetch_markdown_files  # noqa: E402
 from ta_syncgitmdsearch.md_parser import extract_spl  # noqa: E402
-from ta_syncgitmdsearch.names import posix_relpath, search_name_from_path  # noqa: E402
+from ta_syncgitmdsearch.names import search_name_from_path  # noqa: E402
 from ta_syncgitmdsearch.redact import redact_text  # noqa: E402
 from ta_syncgitmdsearch.savedsearch import upsert_savedsearch  # noqa: E402
 
@@ -77,29 +77,21 @@ class SyncGitMdSearchCommand(GeneratingCommand):
                 },
             )
             secrets = load_secrets(session_key)
-            secret_values = [secrets.get("password") or "", secrets.get("ssh_private_key") or ""]
-            self._validate_auth(settings, secrets)
-            with GitRepo(settings, secrets) as repo:
-                files = repo.list_markdown_files()
-                if repo.ssl_warning:
-                    yield self._row(
-                        status="warning",
-                        message=repo.ssl_warning,
-                        extra={"_time": started},
-                    )
-                if not files:
-                    yield self._row(
-                        status="error",
-                        message="No Markdown files matched md_glob",
-                        extra={"_time": started},
-                    )
-                    return
-                seen_names = {}
-                for path in files:
-                    for row in self._process_file(
-                        session_key, settings, repo.repo_dir, path, seen_names, secrets
-                    ):
-                        yield row
+            secret_values = [secrets.get("password") or ""]
+            files = fetch_markdown_files(settings, secrets)
+            if not files:
+                yield self._row(
+                    status="error",
+                    message="No Markdown files matched md_glob",
+                    extra={"_time": started},
+                )
+                return
+            seen_names = {}
+            for item in files:
+                for row in self._process_file(
+                    session_key, settings, item.relpath, item.content, seen_names, secrets
+                ):
+                    yield row
         except Exception as exc:
             yield self._row(
                 status="error",
@@ -107,14 +99,11 @@ class SyncGitMdSearchCommand(GeneratingCommand):
                 extra={"_time": started},
             )
 
-    def _process_file(self, session_key, settings, repo_dir, path, seen_names, secrets):
-        relpath = posix_relpath(path, repo_dir)
-        filename = os.path.basename(path)
+    def _process_file(self, session_key, settings, relpath, markdown, seen_names, secrets):
+        filename = relpath.split("/")[-1]
         try:
-            with open(path, "r", encoding="utf-8") as handle:
-                markdown = handle.read()
             parsed = extract_spl(markdown)
-            search_name = parsed.search_name or search_name_from_path(path)
+            search_name = parsed.search_name or search_name_from_path(relpath)
             if parsed.skip:
                 yield self._row(
                     filename=filename,
@@ -184,15 +173,6 @@ class SyncGitMdSearchCommand(GeneratingCommand):
                 status="error",
                 message=redact_text(str(exc), [secrets.get("password") or ""]),
             )
-
-    def _validate_auth(self, settings, secrets):
-        auth_type = settings["auth_type"]
-        if auth_type in ("https_token", "https_basic") and not secrets.get("password"):
-            raise GitError(
-                "Git password or token is not configured. Open the add-on setup page."
-            )
-        if auth_type == "ssh_key" and not secrets.get("ssh_private_key"):
-            raise GitError("SSH private key is not configured. Open the add-on setup page.")
 
     def _row(self, **fields):
         row = {"_time": time.time()}

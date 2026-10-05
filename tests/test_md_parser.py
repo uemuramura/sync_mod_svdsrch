@@ -7,11 +7,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "TA-syncgitmdsearch" / "bin"))
 
+from ta_syncgitmdsearch.http_git import (
+    build_archive_url,
+    extract_markdown_from_zip,
+    match_repo_glob,
+    resolve_provider,
+    zip_member_relpath,
+)
 from ta_syncgitmdsearch.md_parser import extract_spl
 from ta_syncgitmdsearch.names import search_name_from_path
 from ta_syncgitmdsearch.redact import redact_text
 from ta_syncgitmdsearch.splunk_rest import _status_from_splunk_exception
-from ta_syncgitmdsearch.url_util import validate_git_url
+from ta_syncgitmdsearch.url_util import parse_https_repo, validate_git_url
 
 
 class MdParserTests(unittest.TestCase):
@@ -164,9 +171,16 @@ class UrlTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_git_url("https://169.254.169.254/repo.git")
 
-    def test_scp_syntax(self):
-        url = validate_git_url("git@github.com:org/repo.git")
-        self.assertEqual(url, "git@github.com:org/repo.git")
+    def test_rejects_ssh(self):
+        with self.assertRaises(ValueError):
+            validate_git_url("git@github.com:org/repo.git")
+        with self.assertRaises(ValueError):
+            validate_git_url("ssh://git@github.com/org/repo.git")
+
+    def test_parse_github_repo(self):
+        host, parts = parse_https_repo("https://github.com/org/repo.git")
+        self.assertEqual(host, "github.com")
+        self.assertEqual(parts, ["org", "repo"])
 
 
 class RedactTests(unittest.TestCase):
@@ -177,6 +191,47 @@ class RedactTests(unittest.TestCase):
         )
         self.assertNotIn("s3cret", text)
         self.assertIn("***:***@", text)
+
+
+class HttpGitTests(unittest.TestCase):
+    def test_provider_auto(self):
+        self.assertEqual(resolve_provider("auto", "github.com"), "github")
+        self.assertEqual(resolve_provider("auto", "gitlab.com"), "gitlab")
+        self.assertEqual(resolve_provider("auto", "bitbucket.org"), "bitbucket")
+
+    def test_github_archive_url(self):
+        url = build_archive_url("github", "github.com", ["org", "repo"], "main", "")
+        self.assertEqual(url, "https://api.github.com/repos/org/repo/zipball/main")
+
+    def test_gitlab_archive_url(self):
+        url = build_archive_url("gitlab", "gitlab.com", ["group", "proj"], "main", "")
+        self.assertIn("projects/group%2Fproj/repository/archive.zip", url)
+
+    def test_zip_slip_rejected(self):
+        self.assertIsNone(zip_member_relpath("../secret.md"))
+        self.assertIsNone(zip_member_relpath("root/../etc/passwd"))
+
+    def test_zip_root_stripped(self):
+        self.assertEqual(zip_member_relpath("repo-sha/searches/a.md"), "searches/a.md")
+
+    def test_glob(self):
+        self.assertTrue(match_repo_glob("searches/a.md", "**/*.md"))
+        self.assertTrue(match_repo_glob("a.md", "**/*.md"))
+        self.assertFalse(match_repo_glob("a.txt", "**/*.md"))
+        self.assertTrue(match_repo_glob("queries/foo.md", "queries/*.md"))
+
+    def test_extract_zip(self):
+        import io
+        import zipfile
+
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr("repo-abc/README.md", "# skip\n")
+            archive.writestr("repo-abc/searches/error_count.md", "```spl\nindex=main\n```\n")
+        files = extract_markdown_from_zip(buffer.getvalue(), "**/*.md", "README.md")
+        self.assertEqual(len(files), 1)
+        self.assertEqual(files[0].relpath, "searches/error_count.md")
+        self.assertIn("index=main", files[0].content)
 
 
 class SplunkRestTests(unittest.TestCase):

@@ -43,7 +43,6 @@ def secret_flags(session_key: str) -> Dict[str, str]:
     secrets = load_secrets(session_key)
     return {
         "password_set": _flag(secrets.get("password")),
-        "ssh_key_set": _flag(secrets.get("ssh_private_key")),
     }
 
 
@@ -51,17 +50,6 @@ def save_password(session_key: str, password: str) -> None:
     if not _should_store(password):
         return
     _upsert(session_key, PASSWORD_USER_AUTH, password)
-
-
-def save_ssh_key(session_key: str, ssh_private_key: str) -> None:
-    if not _should_store(ssh_private_key):
-        return
-    cleaned = ssh_private_key.replace("\r\n", "\n").strip() + "\n"
-    if "ENCRYPTED" in cleaned:
-        raise ValueError("Encrypted SSH keys are not supported. Use an unencrypted deploy key.")
-    if "BEGIN" not in cleaned or "PRIVATE KEY" not in cleaned:
-        raise ValueError("ssh_private_key must be an OpenSSH or PEM private key")
-    _upsert(session_key, PASSWORD_USER_SSH, cleaned)
 
 
 def _should_store(value: Optional[str]) -> bool:

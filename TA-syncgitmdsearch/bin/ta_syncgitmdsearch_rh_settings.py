@@ -11,27 +11,26 @@ if BIN_DIR not in sys.path:
 
 import splunk.admin as admin
 
+from ta_syncgitmdsearch.app_state import mark_app_configured
 from ta_syncgitmdsearch.config import normalize_settings
 from ta_syncgitmdsearch.constants import CONF_FILE, CONF_STANZA
-from ta_syncgitmdsearch.app_state import mark_app_configured
-from ta_syncgitmdsearch.credentials import save_password, save_ssh_key, secret_flags
+from ta_syncgitmdsearch.credentials import save_password, secret_flags
 from ta_syncgitmdsearch.splunk_rest import SplunkRestError
 
 PUBLIC_FIELDS = (
     "repo_url",
     "branch",
     "md_glob",
+    "provider",
+    "api_base_url",
     "auth_type",
     "username",
     "target_app",
     "target_owner",
     "overwrite",
-    "verify_ssl",
-    "ssh_strict_host_key",
-    "git_command",
     "skip_files",
 )
-SECRET_FIELDS = ("password", "ssh_private_key")
+SECRET_FIELDS = ("password",)
 
 
 class SettingsHandler(admin.MConfigHandler):
@@ -47,15 +46,13 @@ class SettingsHandler(admin.MConfigHandler):
         for name in PUBLIC_FIELDS:
             item[name] = stanza.get(name, "")
         item["password"] = ""
-        item["ssh_private_key"] = ""
         flags = secret_flags(self.getSessionKey())
         item["password_set"] = flags["password_set"]
-        item["ssh_key_set"] = flags["ssh_key_set"]
 
     def handleEdit(self, conf_info):
         existing = (self.readConf(CONF_FILE) or {}).get(CONF_STANZA, {})
         incoming = {}
-        keep_if_blank = ("skip_files", "git_command", "ssh_strict_host_key")
+        keep_if_blank = ("skip_files",)
         for name in PUBLIC_FIELDS:
             value = self._arg(name)
             if value == "" and name in keep_if_blank:
@@ -66,14 +63,10 @@ class SettingsHandler(admin.MConfigHandler):
             normalized = normalize_settings(incoming)
         except ValueError as exc:
             raise admin.ArgValidationException(str(exc))
-        writable = {
-            key: _conf_value(normalized[key])
-            for key in PUBLIC_FIELDS
-        }
+        writable = {key: _conf_value(normalized[key]) for key in PUBLIC_FIELDS}
         self.writeConf(CONF_FILE, CONF_STANZA, writable)
         try:
             save_password(self.getSessionKey(), self._arg("password"))
-            save_ssh_key(self.getSessionKey(), self._arg("ssh_private_key"))
             mark_app_configured(self.getSessionKey())
         except (ValueError, SplunkRestError) as exc:
             raise admin.ArgValidationException(str(exc))

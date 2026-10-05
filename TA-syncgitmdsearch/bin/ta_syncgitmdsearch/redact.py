@@ -1,4 +1,4 @@
-"""Redact secrets from logs and subprocess output."""
+"""Redact secrets from logs and error messages."""
 
 from __future__ import annotations
 

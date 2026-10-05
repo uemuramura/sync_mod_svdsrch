@@ -1,8 +1,16 @@
 <setup>
   <block title="Git 接続" endpoint="syncgitmdsearch_settings" entity="git">
-    <text>Git のトークンとパスワードは Splunk の password.conf に暗号化保存されます。URL に埋め込まないでください。</text>
+    <text>HTTPS で GitHub / GitLab / Bitbucket から取得します。トークンは password.conf に暗号化保存されます。SSH と git コマンドは使いません。</text>
     <input field="repo_url">
-      <label>リポジトリ URL</label>
+      <label>リポジトリ URL (https のみ)</label>
+      <type>text</type>
+    </input>
+    <input field="provider">
+      <label>プロバイダ (auto / github / gitlab / bitbucket)</label>
+      <type>text</type>
+    </input>
+    <input field="api_base_url">
+      <label>API ベース URL（任意）</label>
       <type>text</type>
     </input>
     <input field="branch">
@@ -14,7 +22,7 @@
       <type>text</type>
     </input>
     <input field="auth_type">
-      <label>認証方式 (https_token / https_basic / ssh_key)</label>
+      <label>認証方式 (https_token / https_basic)</label>
       <type>text</type>
     </input>
     <input field="username">
@@ -35,10 +43,6 @@
     </input>
     <input field="overwrite">
       <label>既存 saved search を上書きする (true / false)</label>
-      <type>text</type>
-    </input>
-    <input field="verify_ssl">
-      <label>Git HTTPS の TLS を検証する (true / false)</label>
       <type>text</type>
     </input>
   </block>

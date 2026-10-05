@@ -1,6 +1,6 @@
 <form script="setup.js" stylesheet="setup.css" hideEdit="true" hideFilters="true" isDashboard="false">
   <label>Git 接続設定</label>
-  <description>Git 認証情報は Splunk の password.conf（storage/passwords）へ暗号化保存されます。ソースコードやコマンド引数には置かないでください。</description>
+  <description>HTTPS で GitHub / GitLab / Bitbucket から Markdown を取得します。トークンは password.conf に暗号化保存されます。</description>
   <row>
     <panel>
       <html>
@@ -8,8 +8,19 @@
           <p id="sgms-status" class="sgms-status" role="status"></p>
           <div id="sgms-form" class="sgms-grid-wrap">
             <div class="sgms-grid">
-              <label for="sgms-repo-url">Git リポジトリ URL</label>
+              <label for="sgms-repo-url">リポジトリ URL (https のみ)</label>
               <input id="sgms-repo-url" name="repo_url" type="text" maxlength="500" placeholder="https://github.com/org/repo.git" />
+
+              <label for="sgms-provider">プロバイダ</label>
+              <select id="sgms-provider" name="provider">
+                <option value="auto">自動判定</option>
+                <option value="github">GitHub</option>
+                <option value="gitlab">GitLab</option>
+                <option value="bitbucket">Bitbucket</option>
+              </select>
+
+              <label for="sgms-api-base">API ベース URL（GitHub Enterprise / 自前 GitLab 用、任意）</label>
+              <input id="sgms-api-base" name="api_base_url" type="text" maxlength="300" placeholder="https://gitlab.example.com/api/v4" />
 
               <label for="sgms-branch">ブランチ</label>
               <input id="sgms-branch" name="branch" type="text" maxlength="200" />
@@ -21,7 +32,6 @@
               <select id="sgms-auth-type" name="auth_type">
                 <option value="https_token">HTTPS トークン</option>
                 <option value="https_basic">HTTPS ユーザー名 + パスワード</option>
-                <option value="ssh_key">SSH デプロイキー</option>
               </select>
 
               <label id="sgms-username-label" for="sgms-username">ユーザー名</label>
@@ -30,10 +40,6 @@
               <label id="sgms-password-label" for="sgms-password">パスワード / トークン</label>
               <input id="sgms-password" name="password" type="password" maxlength="4000" autocomplete="new-password" />
               <p id="sgms-password-hint" class="sgms-hint"></p>
-
-              <label id="sgms-ssh-label" for="sgms-ssh-key">SSH 秘密鍵</label>
-              <textarea id="sgms-ssh-key" name="ssh_private_key" rows="8" maxlength="16000" spellcheck="false"></textarea>
-              <p id="sgms-ssh-hint" class="sgms-hint"></p>
 
               <label for="sgms-target-app">saved search の保存先アプリ</label>
               <input id="sgms-target-app" name="target_app" type="text" maxlength="80" />
@@ -45,17 +51,12 @@
                 <input id="sgms-overwrite" name="overwrite" type="checkbox" />
                 このコマンド以外が作った saved search も上書きする
               </label>
-
-              <label class="sgms-check">
-                <input id="sgms-verify-ssl" name="verify_ssl" type="checkbox" checked="checked" />
-                Git HTTPS の TLS 証明書を検証する
-              </label>
             </div>
             <div class="sgms-actions">
               <button id="sgms-save" class="sgms-button" type="button">設定を保存</button>
             </div>
           </div>
-          <p class="sgms-note">保存後は <code>| syncgitmdsearch dry_run=true</code> で抽出結果を確認してから同期してください。</p>
+          <p class="sgms-note">Git コマンドは使いません。保存後は <code>| syncgitmdsearch dry_run=true</code> で確認してください。</p>
         </div>
       </html>
     </panel>

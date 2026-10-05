@@ -21,31 +21,24 @@ require([
   }
 
   function toggleAuthFields() {
-    var authType = $("#sgms-auth-type").val();
-    var tokenMode = authType === "https_token" || authType === "https_basic";
-    var sshMode = authType === "ssh_key";
-    $("#sgms-username, #sgms-username-label").toggle(!sshMode);
-    $("#sgms-password, #sgms-password-label, #sgms-password-hint").toggle(tokenMode);
-    $("#sgms-ssh-key, #sgms-ssh-label, #sgms-ssh-hint").toggle(sshMode);
+    var basic = $("#sgms-auth-type").val() === "https_basic";
+    $("#sgms-username, #sgms-username-label").toggle(basic);
   }
 
   function applyContent(content) {
     $("#sgms-repo-url").val(content.repo_url || "");
+    $("#sgms-provider").val(content.provider || "auto");
+    $("#sgms-api-base").val(content.api_base_url || "");
     $("#sgms-branch").val(content.branch || "main");
     $("#sgms-md-glob").val(content.md_glob || "**/*.md");
-    $("#sgms-auth-type").val(content.auth_type || "https_token");
+    $("#sgms-auth-type").val(content.auth_type === "https_basic" ? "https_basic" : "https_token");
     $("#sgms-username").val(content.username || "");
-    $("#sgms-target-app").val(content.target_app || "search");
+    $("#sgms-target-app").val(content.target_app || "TA-syncgitmdsearch");
     $("#sgms-target-owner").val(content.target_owner || "nobody");
     $("#sgms-overwrite").prop("checked", boolFromConf(content.overwrite));
-    $("#sgms-verify-ssl").prop("checked", content.verify_ssl === undefined ? true : boolFromConf(content.verify_ssl));
     $("#sgms-password").val("");
-    $("#sgms-ssh-key").val("");
     $("#sgms-password-hint").text(
-      content.password_set === "1" ? "保存済みのシークレットがあります。変更する場合のみ入力してください。" : "未設定です。"
-    );
-    $("#sgms-ssh-hint").text(
-      content.ssh_key_set === "1" ? "保存済みの鍵があります。差し替える場合のみ貼り付けてください。" : "未設定です。"
+      content.password_set === "1" ? "保存済みのシークレットがあります。変更する場合のみ入力してください。" : "公開リポジトリなら空でも構いません。"
     );
     toggleAuthFields();
   }
@@ -69,29 +62,25 @@ require([
     event.preventDefault();
     var payload = {
       repo_url: $("#sgms-repo-url").val().trim(),
+      provider: $("#sgms-provider").val(),
+      api_base_url: $("#sgms-api-base").val().trim(),
       branch: $("#sgms-branch").val().trim(),
       md_glob: $("#sgms-md-glob").val().trim(),
       auth_type: $("#sgms-auth-type").val(),
       username: $("#sgms-username").val().trim(),
       target_app: $("#sgms-target-app").val().trim(),
       target_owner: $("#sgms-target-owner").val().trim(),
-      overwrite: $("#sgms-overwrite").is(":checked") ? "1" : "0",
-      verify_ssl: $("#sgms-verify-ssl").is(":checked") ? "1" : "0"
+      overwrite: $("#sgms-overwrite").is(":checked") ? "1" : "0"
     };
     var password = $("#sgms-password").val();
-    var sshKey = $("#sgms-ssh-key").val();
     if (password) {
       payload.password = password;
-    }
-    if (sshKey) {
-      payload.ssh_private_key = sshKey;
     }
     $save.prop("disabled", true);
     setStatus("", "保存しています...");
     service.post(endpoint, payload, function (err) {
       $save.prop("disabled", false);
       $("#sgms-password").val("");
-      $("#sgms-ssh-key").val("");
       if (err) {
         var detail = (err.data && err.data.messages && err.data.messages[0] && err.data.messages[0].text) || err.error || "保存に失敗しました。";
         setStatus("error", String(detail));

@@ -1,53 +1,61 @@
-"""Git URL validation. Credentials must never appear in the URL."""
+"""HTTPS Git URL validation. Credentials must never appear in the URL."""
 
 from __future__ import annotations
 
 import ipaddress
 import re
 import socket
+from typing import List, Tuple
 from urllib.parse import urlparse
 
-SCP_RE = re.compile(
-    r"^(?:(?P<user>[A-Za-z0-9._-]+)@)?(?P<host>[A-Za-z0-9.-]+):(?P<path>[^:\s]+)$"
-)
 HOST_RE = re.compile(r"^[A-Za-z0-9.-]+$")
 METADATA_NETWORKS = (
     ipaddress.ip_network("169.254.169.254/32"),
     ipaddress.ip_network("fd00:ec2::254/128"),
 )
 BLOCKED_HOSTS = frozenset({"metadata.google.internal", "metadata.google.internal."})
+TREE_MARKERS = frozenset({"tree", "blob", "src", "raw", "-"})
 
 
 def validate_git_url(url: str) -> str:
+    return validate_https_url(url, "repo_url")
+
+
+def validate_https_url(url: str, field: str) -> str:
     if not isinstance(url, str) or not url.strip():
-        raise ValueError("repo_url is required")
+        raise ValueError("{} is required".format(field))
     cleaned = url.strip()
     if any(char in cleaned for char in ("\n", "\r", "\x00", " ", "\\")):
-        raise ValueError("repo_url contains invalid characters")
-    if "://" in cleaned:
-        parsed = urlparse(cleaned)
-        scheme = (parsed.scheme or "").lower()
-        if scheme not in ("https", "ssh"):
-            raise ValueError("repo_url must use https:// or ssh://")
-        if parsed.username or parsed.password:
-            raise ValueError(
-                "Do not embed credentials in repo_url; store them in the add-on setup page"
-            )
-        host = parsed.hostname
-        if not host:
-            raise ValueError("repo_url host is missing")
-        _reject_unsafe_host(host)
-        if not parsed.path or parsed.path == "/":
-            raise ValueError("repo_url path is missing")
-        return cleaned
-    match = SCP_RE.match(cleaned)
-    if match:
-        _reject_unsafe_host(match.group("host"))
-        path = match.group("path")
-        if not path or path in (".", ".."):
-            raise ValueError("repo_url path is invalid")
-        return cleaned
-    raise ValueError("Unsupported git URL format")
+        raise ValueError("{} contains invalid characters".format(field))
+    parsed = urlparse(cleaned)
+    if (parsed.scheme or "").lower() != "https":
+        raise ValueError("{} must use https://".format(field))
+    if parsed.username or parsed.password:
+        raise ValueError(
+            "Do not embed credentials in {}; store them in the add-on setup page".format(field)
+        )
+    host = parsed.hostname
+    if not host:
+        raise ValueError("{} host is missing".format(field))
+    _reject_unsafe_host(host)
+    if parsed.port not in (None, 443):
+        raise ValueError("{} must use HTTPS port 443".format(field))
+    return cleaned.rstrip("/")
+
+
+def parse_https_repo(url: str) -> Tuple[str, List[str]]:
+    parsed = urlparse(validate_https_url(url, "repo_url"))
+    parts = [item for item in parsed.path.split("/") if item]
+    if parts and parts[-1].endswith(".git"):
+        parts[-1] = parts[-1][:-4]
+    trimmed = []
+    for item in parts:
+        if item.lower() in TREE_MARKERS:
+            break
+        trimmed.append(item)
+    if len(trimmed) < 2:
+        raise ValueError("repo_url must include owner/group and repository name")
+    return parsed.hostname or "", trimmed
 
 
 def _reject_unsafe_host(host: str) -> None:
