@@ -97,10 +97,19 @@ require([
         setStatus("error", String(detail));
         return;
       }
-      setStatus("ok", "設定を保存しました。シークレットは password.conf に暗号化されています。");
-      loadSettings("設定を保存しました。シークレットは password.conf に暗号化されています。");
+      setStatus("ok", "設定を保存しました。セットアップを完了しています...");
+      window.location.href = _syncViewUrl();
     });
   });
+
+  function _syncViewUrl() {
+    var parts = window.location.pathname.split("/");
+    if (parts.length >= 2) {
+      parts[parts.length - 1] = "sync";
+      return parts.join("/") + window.location.search;
+    }
+    return "sync";
+  }
 
   loadSettings();
 });

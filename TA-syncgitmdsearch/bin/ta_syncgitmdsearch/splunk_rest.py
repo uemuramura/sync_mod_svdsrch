@@ -31,7 +31,13 @@ def request(
         kwargs["postargs"] = postargs
     if getargs is not None:
         kwargs["getargs"] = getargs
-    response, content = simpleRequest(path, **kwargs)
+    try:
+        response, content = simpleRequest(path, **kwargs)
+    except Exception as exc:
+        status = _status_from_splunk_exception(exc)
+        if status is None:
+            raise
+        raise SplunkRestError(str(exc), status=status)
     status = int(response.get("status", 0))
     body = content.decode("utf-8") if isinstance(content, bytes) else (content or "")
     parsed = None
@@ -47,6 +53,24 @@ def request(
 
 def encode_segment(value: str) -> str:
     return quote(value, safe="")
+
+
+def _status_from_splunk_exception(exc: Exception) -> Optional[int]:
+    """simpleRequest raises ResourceNotFound on 404 even when raiseAllErrors=False."""
+    name = type(exc).__name__
+    if name == "ResourceNotFound":
+        return 404
+    for attr in ("statusCode", "status"):
+        value = getattr(exc, attr, None)
+        if value is not None:
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                pass
+    text = str(exc)
+    if "HTTP 404" in text or "does not exist" in text or "does not exists" in text:
+        return 404
+    return None
 
 
 def _error_message(parsed: Any, raw: str, status: int) -> str:

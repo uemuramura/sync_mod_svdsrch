@@ -13,7 +13,9 @@ import splunk.admin as admin
 
 from ta_syncgitmdsearch.config import normalize_settings
 from ta_syncgitmdsearch.constants import CONF_FILE, CONF_STANZA
+from ta_syncgitmdsearch.app_state import mark_app_configured
 from ta_syncgitmdsearch.credentials import save_password, save_ssh_key, secret_flags
+from ta_syncgitmdsearch.splunk_rest import SplunkRestError
 
 PUBLIC_FIELDS = (
     "repo_url",
@@ -72,9 +74,9 @@ class SettingsHandler(admin.MConfigHandler):
         try:
             save_password(self.getSessionKey(), self._arg("password"))
             save_ssh_key(self.getSessionKey(), self._arg("ssh_private_key"))
-        except ValueError as exc:
+            mark_app_configured(self.getSessionKey())
+        except (ValueError, SplunkRestError) as exc:
             raise admin.ArgValidationException(str(exc))
-        self.writeConf("app", "install", {"is_configured": "1"})
         self.handleList(conf_info)
 
     def handleCreate(self, conf_info):

@@ -12,7 +12,7 @@ export = system
 access = read : [ admin ], write : [ admin ]
 export = system
 
-[views/setup]
+[views/git_setup]
 access = read : [ admin ], write : [ admin ]
 export = none
 

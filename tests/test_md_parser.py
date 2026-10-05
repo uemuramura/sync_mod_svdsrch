@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "TA-syncgitmdsearch" / "bin"))
 from ta_syncgitmdsearch.md_parser import extract_spl
 from ta_syncgitmdsearch.names import search_name_from_path
 from ta_syncgitmdsearch.redact import redact_text
+from ta_syncgitmdsearch.splunk_rest import _status_from_splunk_exception
 from ta_syncgitmdsearch.url_util import validate_git_url
 
 
@@ -176,6 +177,17 @@ class RedactTests(unittest.TestCase):
         )
         self.assertNotIn("s3cret", text)
         self.assertIn("***:***@", text)
+
+
+class SplunkRestTests(unittest.TestCase):
+    def test_resource_not_found_is_404(self):
+        class ResourceNotFound(Exception):
+            pass
+
+        self.assertEqual(
+            _status_from_splunk_exception(ResourceNotFound("[HTTP 404] missing")),
+            404,
+        )
 
 
 if __name__ == "__main__":

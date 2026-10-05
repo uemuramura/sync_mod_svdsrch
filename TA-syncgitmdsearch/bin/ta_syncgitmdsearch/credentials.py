@@ -71,19 +71,39 @@ def _should_store(value: Optional[str]) -> bool:
 
 
 def _upsert(session_key: str, username: str, password: str) -> None:
-    encoded = quote("{}:{}:".format(PASSWORD_REALM, username), safe="")
-    update_path = "/servicesNS/nobody/{}/storage/passwords/{}".format(APP_NAME, encoded)
-    try:
-        request(
-            update_path,
-            session_key,
-            method="POST",
-            postargs={"password": password},
-        )
+    if _has_credential(session_key, username):
+        _update_password(session_key, username, password)
         return
+    try:
+        _create_password(session_key, username, password)
     except SplunkRestError as exc:
-        if exc.status not in (404, 400):
+        already_exists = exc.status in (400, 409) and "already exist" in str(exc).lower()
+        if not already_exists:
             raise
+        _update_password(session_key, username, password)
+
+
+def _has_credential(session_key: str, username: str) -> bool:
+    _, payload = request(
+        "/servicesNS/nobody/{}/storage/passwords".format(APP_NAME),
+        session_key,
+        getargs={"output_mode": "json", "count": "0"},
+    )
+    expected_names = (
+        "credential:{}:{}:".format(PASSWORD_REALM, username),
+        "{}:{}:".format(PASSWORD_REALM, username),
+    )
+    for entry in _entries(payload):
+        content = entry.get("content") or {}
+        if content.get("realm") == PASSWORD_REALM and content.get("username") == username:
+            return True
+        name = entry.get("name") or content.get("name") or ""
+        if name in expected_names:
+            return True
+    return False
+
+
+def _create_password(session_key: str, username: str, password: str) -> None:
     request(
         "/servicesNS/nobody/{}/storage/passwords".format(APP_NAME),
         session_key,
@@ -93,6 +113,16 @@ def _upsert(session_key: str, username: str, password: str) -> None:
             "password": password,
             "realm": PASSWORD_REALM,
         },
+    )
+
+
+def _update_password(session_key: str, username: str, password: str) -> None:
+    encoded = quote("credential:{}:{}:".format(PASSWORD_REALM, username), safe="")
+    request(
+        "/servicesNS/nobody/{}/storage/passwords/{}".format(APP_NAME, encoded),
+        session_key,
+        method="POST",
+        postargs={"password": password},
     )
 
 

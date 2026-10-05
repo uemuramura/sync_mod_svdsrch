@@ -1,5 +1,5 @@
 <nav search_view="search" color="#165a72">
-  <view name="setup" default="true" />
-  <view name="sync" />
+  <view name="sync" default="true" />
+  <view name="git_setup" />
   <view name="search" />
 </nav>
